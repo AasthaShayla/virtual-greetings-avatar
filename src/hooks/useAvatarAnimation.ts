@@ -26,6 +26,11 @@ export const useAvatarAnimation = ({
   useEffect(() => {
     if (!sceneObjects) return;
     
+    // Add extra lighting to make sure the model is visible
+    const frontLight = new THREE.DirectionalLight(0xffffff, 1);
+    frontLight.position.set(0, 0, 2);
+    sceneObjects.scene.add(frontLight);
+    
     // Start the animation loop
     animate();
     

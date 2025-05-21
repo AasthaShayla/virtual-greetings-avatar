@@ -1,6 +1,7 @@
 
 import * as THREE from 'three';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
+import { TGALoader } from 'three/examples/jsm/loaders/TGALoader.js';
 
 // Initialize the 3D scene
 export const initScene = (container: HTMLDivElement) => {
@@ -48,21 +49,24 @@ export const initScene = (container: HTMLDivElement) => {
 
 // Load textures for model
 export const loadTextures = () => {
+  // Use TGALoader for TGA textures
   const textureLoader = new THREE.TextureLoader();
+  const tgaLoader = new TGALoader();
   
-  // Load head texture
-  const headColorTexture = textureLoader.load('/Textures/f020_head_color.tga');
-  const headNormalTexture = textureLoader.load('/Textures/f020_head_normal.tga');
-  const headSpecularTexture = textureLoader.load('/Textures/f020_head_specular.tga');
+  // Load head texture with TGALoader
+  const headColorTexture = tgaLoader.load('/Textures/f020_head_color.tga');
+  const headNormalTexture = tgaLoader.load('/Textures/f020_head_normal.tga');
+  const headSpecularTexture = tgaLoader.load('/Textures/f020_head_specular.tga');
   
-  // Load body texture
-  const bodyColorTexture = textureLoader.load('/Textures/f020_body_color.tga');
-  const bodySpecularTexture = textureLoader.load('/Textures/f020_body_specular.tga');
+  // Load body texture with TGALoader
+  const bodyColorTexture = tgaLoader.load('/Textures/f020_body_color.tga');
+  const bodyNormalTexture = tgaLoader.load('/Textures/f020_body_normal.tga');
+  const bodySpecularTexture = tgaLoader.load('/Textures/f020_body_specular.tga');
   
-  // Load opacity texture
-  const opacityTexture = textureLoader.load('/Textures/f020_opacity_color.tga');
+  // Load opacity texture with TGALoader
+  const opacityTexture = tgaLoader.load('/Textures/f020_opacity_color.tga');
 
-  // Create materials
+  // Create materials with proper textures
   const headMaterial = new THREE.MeshPhongMaterial({
     map: headColorTexture,
     normalMap: headNormalTexture,
@@ -72,6 +76,7 @@ export const loadTextures = () => {
   
   const bodyMaterial = new THREE.MeshPhongMaterial({
     map: bodyColorTexture,
+    normalMap: bodyNormalTexture,
     specularMap: bodySpecularTexture,
     shininess: 20
   });
