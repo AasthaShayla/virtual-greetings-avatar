@@ -1,4 +1,3 @@
-
 import React, { useRef, useEffect } from 'react';
 import * as THREE from 'three';
 import { useSpeech } from '@/contexts/SpeechContext';
@@ -40,7 +39,7 @@ const TalkingHead: React.FC = () => {
     const handleResize = () => {
       if (!camera.current || !renderer.current) return;
       camera.current.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
+      camera.current.updateProjectionMatrix();
       renderer.current.setSize(window.innerWidth, window.innerHeight);
     };
     
