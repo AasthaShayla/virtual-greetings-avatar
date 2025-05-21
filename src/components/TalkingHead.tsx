@@ -1,7 +1,7 @@
 
 import React, { useRef, useEffect, useState } from 'react';
 import * as THREE from 'three';
-import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader';
+import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js'; // Add .js extension
 import { useSpeech } from '@/contexts/SpeechContext';
 
 const TalkingHead: React.FC = () => {
