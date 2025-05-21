@@ -15,7 +15,7 @@ const Index = () => {
   }, []);
 
   const handleSayHi = () => {
-    speak("Hi there! It's nice to meet you!");
+    speak("Hi there! I'm your virtual business assistant. How can I help you today?");
   };
 
   return (
@@ -31,7 +31,7 @@ const Index = () => {
           onClick={handleSayHi}
           className="bg-blue-500 hover:bg-blue-600 px-6 py-3 text-lg font-medium"
         >
-          Say Hi
+          Start Conversation
         </Button>
       </div>
     </div>
