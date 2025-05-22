@@ -84,9 +84,9 @@ export const loadTextures = () => {
   return { headMaterial, bodyMaterial };
 };
 
-// Create an FBX loader instance
-export const createFBXLoader = () => {
-  return new FBXLoader();
+// Create an FBXLoader instance with optional loading manager
+export const createFBXLoader = (loadingManager?: THREE.LoadingManager) => {
+  return loadingManager ? new FBXLoader(loadingManager) : new FBXLoader();
 };
 
 export type ThreeSceneObjects = {
