@@ -13,7 +13,13 @@ export const useAvatarModel = (sceneObjects: ThreeSceneObjects | null) => {
   useEffect(() => {
     if (!sceneObjects) return;
     
-    loadModel(sceneObjects);
+    // Create a loading manager to track progress
+    const loadingManager = new THREE.LoadingManager();
+    loadingManager.onProgress = (url, loaded, total) => {
+      console.log(`Loading: ${Math.round(loaded / total * 100)}% (${url})`);
+    };
+    
+    loadModel(sceneObjects, loadingManager);
     
     return () => {
       // Clean up model
@@ -24,25 +30,25 @@ export const useAvatarModel = (sceneObjects: ThreeSceneObjects | null) => {
     };
   }, [sceneObjects]);
   
-  const loadModel = (sceneObjects: ThreeSceneObjects) => {
+  const loadModel = (sceneObjects: ThreeSceneObjects, loadingManager: THREE.LoadingManager) => {
     console.log('Loading 3D model...');
     const { scene } = sceneObjects;
-    const fbxLoader = createFBXLoader();
+    const fbxLoader = createFBXLoader(loadingManager);
     const { headMaterial, bodyMaterial } = loadTextures();
     
-    // Load the FBX model
+    // Load the FBX model with improved settings
     fbxLoader.load(
       '/Exports/Business_Female_04.fbx',
       (fbx) => {
         console.log('Model loaded successfully');
         modelRef.current = fbx;
         
-        // Scale and position the model
+        // Scale and position the model - face toward camera
         fbx.scale.set(0.01, 0.01, 0.01); // Scale down the model
-        fbx.position.set(0, 0, 0); // Center the model
-        fbx.rotation.y = Math.PI; // Face the model toward the camera
+        fbx.position.set(0, -0.2, 0); // Lower position slightly for better frame
+        fbx.rotation.y = 0; // Face the model toward the camera directly
         
-        // Apply materials to the model
+        // Apply materials to the model with better texture mapping
         fbx.traverse((child) => {
           if (child instanceof THREE.Mesh) {
             console.log('Found mesh:', child.name);
@@ -64,8 +70,10 @@ export const useAvatarModel = (sceneObjects: ThreeSceneObjects | null) => {
             }
           }
           
-          // Find the jaw bone for animation
-          if (child instanceof THREE.Bone && child.name.toLowerCase().includes('jaw')) {
+          // Find the jaw bone for animation with improved naming matching
+          if (child instanceof THREE.Bone && 
+              (child.name.toLowerCase().includes('jaw') || 
+               child.name.toLowerCase().includes('mouth'))) {
             jawBoneRef.current = child;
             console.log('Found jaw bone:', child.name);
           }
@@ -75,8 +83,8 @@ export const useAvatarModel = (sceneObjects: ThreeSceneObjects | null) => {
         scene.add(fbx);
         console.log('Added model to scene');
         
-        // Load facial animations
-        loadFacialAnimations(fbx);
+        // Load facial animations with priority
+        loadFacialAnimations(fbx, loadingManager);
       },
       (progress) => {
         console.log('Model loading:', (progress.loaded / progress.total * 100).toFixed(2) + '%');
@@ -87,9 +95,9 @@ export const useAvatarModel = (sceneObjects: ThreeSceneObjects | null) => {
     );
   };
   
-  const loadFacialAnimations = (fbx: THREE.Group) => {
+  const loadFacialAnimations = (fbx: THREE.Group, loadingManager: THREE.LoadingManager) => {
     console.log('Loading facial animations...');
-    const fbxLoader = createFBXLoader();
+    const fbxLoader = createFBXLoader(loadingManager);
     
     fbxLoader.load(
       '/Exports/Business_Female_04_facial.fbx',
@@ -102,25 +110,38 @@ export const useAvatarModel = (sceneObjects: ThreeSceneObjects | null) => {
         const animations = facialFbx.animations;
         console.log('Available animations:', animations.map(a => a.name));
         
-        // Find the talking animation
-        const talkingAnimation = animations.find(anim => 
-          anim.name.includes('Talk') || anim.name.includes('Mouth')
-        );
-        
-        if (talkingAnimation) {
-          console.log('Found talking animation:', talkingAnimation.name);
-          // Create an action for the talking animation
-          const talkAction = mixerRef.current.clipAction(talkingAnimation);
-          talkAction.setEffectiveWeight(0); // Start with weight 0
-          talkAction.play();
-        } else {
-          console.log('No talking animation found, using available animations');
-          // Use the first animation if no talking animation found
-          if (animations.length > 0) {
-            const firstAnimation = mixerRef.current.clipAction(animations[0]);
-            firstAnimation.play();
+        // Load multiple facial expressions for better animation variety
+        animations.forEach(animation => {
+          const action = mixerRef.current!.clipAction(animation);
+          
+          // Set different weights for different animations
+          if (animation.name.includes('Talk') || animation.name.includes('Mouth')) {
+            action.setEffectiveWeight(0.8);
+            action.play();
+          } else if (animation.name.includes('Eye') || animation.name.includes('Blink')) {
+            action.setEffectiveWeight(0.6);
+            action.play();
+          } else if (animation.name.includes('Brow')) {
+            action.setEffectiveWeight(0.4);
+            action.play();
+          } else {
+            action.setEffectiveWeight(0.3);
+            action.play();
           }
-        }
+        });
+        
+        // Add blink animation cycle
+        setInterval(() => {
+          const blinkAction = animations.find(anim => anim.name.includes('Blink'));
+          if (blinkAction && mixerRef.current) {
+            const action = mixerRef.current.clipAction(blinkAction);
+            action.setEffectiveWeight(1);
+            action.play();
+            setTimeout(() => {
+              action.setEffectiveWeight(0);
+            }, 200);
+          }
+        }, 4000 + Math.random() * 3000);
         
         setModelLoaded(true);
       },

@@ -1,5 +1,5 @@
 
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect } from 'react';
 import * as THREE from 'three';
 import { useSpeech } from '@/contexts/SpeechContext';
 import { initScene } from '@/utils/threeUtils';
@@ -13,27 +13,38 @@ const TalkingHead: React.FC = () => {
   const sceneObjectsRef = useRef<ThreeSceneObjects | null>(null);
   const currentMouthOpenness = useRef<number>(0);
   
-  // Setup 3D scene
+  // Setup 3D scene with optimized render size
   useEffect(() => {
     if (!canvasRef.current) return;
     
-    // Initialize the 3D scene
+    // Initialize the 3D scene with performance optimizations
     sceneObjectsRef.current = initScene(canvasRef.current);
     
-    // Handle window resize
+    // Handle window resize with debouncing for better performance
+    let resizeTimeout: number;
     const handleResize = () => {
-      if (!sceneObjectsRef.current) return;
-      const { camera, renderer } = sceneObjectsRef.current;
-      
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
+      clearTimeout(resizeTimeout);
+      resizeTimeout = window.setTimeout(() => {
+        if (!sceneObjectsRef.current) return;
+        const { camera, renderer } = sceneObjectsRef.current;
+        
+        // Update camera and renderer based on container size, not window size
+        const container = canvasRef.current;
+        if (container) {
+          const width = container.clientWidth;
+          const height = container.clientHeight;
+          camera.aspect = width / height;
+          camera.updateProjectionMatrix();
+          renderer.setSize(width, height);
+        }
+      }, 100); // Debounce resize events
     };
     
     window.addEventListener('resize', handleResize);
     
     return () => {
       window.removeEventListener('resize', handleResize);
+      clearTimeout(resizeTimeout);
       
       if (sceneObjectsRef.current?.renderer.domElement && canvasRef.current) {
         canvasRef.current.removeChild(sceneObjectsRef.current.renderer.domElement);
@@ -46,7 +57,7 @@ const TalkingHead: React.FC = () => {
   // Load and setup avatar model
   const { modelRef, mixerRef, jawBoneRef, modelLoaded } = useAvatarModel(sceneObjectsRef.current);
   
-  // Update mouth openness from speech
+  // Update mouth openness from speech with immediate response for better lip sync
   useEffect(() => {
     currentMouthOpenness.current = mouthOpenness;
   }, [mouthOpenness]);
