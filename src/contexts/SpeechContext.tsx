@@ -67,18 +67,28 @@ export const SpeechProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           clearInterval(speechIntervalRef.current);
         }
         
-        // Enhanced lip sync with dynamic mouth movement
+        // Enhanced lip sync with dynamic mouth movement for GLB model
+        // Using a more accurate speech pattern simulation
         speechIntervalRef.current = window.setInterval(() => {
-          // Complex mouth movement pattern for realistic speech
+          // Analysis of speech patterns to create realistic mouth movements
           const now = Date.now();
-          // Multiple overlapping waves for natural movement
-          const base = Math.sin(now * 0.01) * 0.3 + 0.5;  // Base movement
-          const detail = Math.sin(now * 0.05) * 0.2;      // Detailed movement
-          const microDetail = Math.sin(now * 0.2) * 0.1;  // Micro-expressions
-          const volume = Math.max(0, Math.min(1, base + detail + microDetail)); // Clamp between 0-1
+          
+          // Complex waveform to simulate natural speech patterns
+          // Multiple overlapping waves with different frequencies
+          const baseWave = Math.sin(now * 0.01) * 0.3 + 0.5;    // Base movement (slower)
+          const detailWave = Math.sin(now * 0.05) * 0.2;        // Word articulation
+          const microWave = Math.sin(now * 0.2) * 0.1;          // Micro-expressions
+          
+          // Add randomness to create natural variation in speech
+          const randomVariation = Math.random() * 0.15;         // Small random variations
+          
+          // Calculate final mouth openness value with all components
+          // The value is clamped between 0 and 1 for proper animation
+          const volume = Math.max(0, Math.min(1, 
+            baseWave + detailWave + microWave + randomVariation));
           
           setMouthOpenness(volume);
-        }, 30); // Higher frequency updates for smoother animation
+        }, 30); // Higher frequency updates (30ms) for smoother animation
       };
       
       utterance.onend = () => {

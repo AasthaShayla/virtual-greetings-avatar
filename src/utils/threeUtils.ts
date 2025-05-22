@@ -14,7 +14,7 @@ export const initScene = (container: HTMLDivElement) => {
   const camera = new THREE.PerspectiveCamera(
     50, container.clientWidth / container.clientHeight, 0.1, 1000
   );
-  camera.position.set(0, 1.7, 2); // Position camera at eye level
+  camera.position.set(0, 1.5, 2.2); // Position camera for better framing of office worker
   
   // Create optimized renderer
   const renderer = new THREE.WebGLRenderer({ 
@@ -28,19 +28,30 @@ export const initScene = (container: HTMLDivElement) => {
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   container.appendChild(renderer.domElement);
   
-  // Add lights with optimized settings
-  const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
+  // Add lights with optimized settings for better face illumination
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
   scene.add(ambientLight);
   
-  const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
+  // Main directional light (sun-like)
+  const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
   directionalLight.position.set(1, 1, 1);
   directionalLight.castShadow = true;
+  // Optimize shadow settings
+  directionalLight.shadow.mapSize.width = 1024;
+  directionalLight.shadow.mapSize.height = 1024;
+  directionalLight.shadow.camera.near = 0.1;
+  directionalLight.shadow.camera.far = 10;
   scene.add(directionalLight);
   
-  // Add a strong front light to illuminate the face
-  const frontLight = new THREE.DirectionalLight(0xffffff, 1.5);
+  // Add a strong front light to illuminate the face for better visibility
+  const frontLight = new THREE.DirectionalLight(0xffffff, 1.2);
   frontLight.position.set(0, 0, 2);
   scene.add(frontLight);
+  
+  // Add fill light from the other side to reduce harsh shadows
+  const fillLight = new THREE.DirectionalLight(0xffffff, 0.5);
+  fillLight.position.set(-1, 0.5, 1);
+  scene.add(fillLight);
 
   return { scene, camera, renderer };
 };

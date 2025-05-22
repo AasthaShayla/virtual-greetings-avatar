@@ -2,7 +2,7 @@
 import { useRef, useState, useEffect } from 'react';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { loadTextures } from '@/utils/threeUtils';
+import { loadTextures, createGLTFLoader } from '@/utils/threeUtils';
 import type { ThreeSceneObjects } from '@/utils/threeUtils';
 
 export const useAvatarModel = (sceneObjects: ThreeSceneObjects | null) => {
@@ -38,43 +38,40 @@ export const useAvatarModel = (sceneObjects: ThreeSceneObjects | null) => {
   }, [sceneObjects]);
   
   const loadModel = (sceneObjects: ThreeSceneObjects, loadingManager: THREE.LoadingManager) => {
-    console.log('Loading 3D model (GLTF)...');
+    console.log('Loading 3D model (GLB)...');
     const { scene } = sceneObjects;
-    const gltfLoader = new GLTFLoader(loadingManager);
+    const gltfLoader = createGLTFLoader(loadingManager);
     const { headMaterial, bodyMaterial } = loadTextures();
     
-    // Load the GLTF model (from Blender file)
+    // Load the GLB model
     gltfLoader.load(
-      '/Sketchfab_2022_02_06_11_22_28.blend',
+      '/office_worker_1_animated.glb',
       (gltf) => {
-        console.log('Model loaded successfully');
+        console.log('Model loaded successfully', gltf);
         const model = gltf.scene;
         modelRef.current = model;
         
         // Set the model to face toward the camera
-        model.scale.set(0.5, 0.5, 0.5); // Scale appropriately
-        model.position.set(0, -1, 0); // Position for better framing
-        model.rotation.y = 0; // Face the camera
+        model.scale.set(1, 1, 1); // Default scale
+        model.position.set(0, -0.8, 0); // Position for better framing
+        model.rotation.y = Math.PI; // Face the camera
         
         // Apply materials and prepare for shadows
         model.traverse((child) => {
           if (child instanceof THREE.Mesh) {
             console.log('Found mesh:', child.name);
             
-            // Apply default materials
+            // Apply shadows
             child.castShadow = true;
             child.receiveShadow = true;
             
-            // Apply materials based on mesh name if you want to customize
-            if (child.name.toLowerCase().includes('head') || 
-                child.name.toLowerCase().includes('face') || 
-                child.name.toLowerCase().includes('eye') || 
-                child.name.toLowerCase().includes('brow')) {
-              // Apply head material if needed
+            // Log materials for debugging
+            if (child.material) {
+              console.log('Material:', child.material);
             }
           }
           
-          // Find jaw bone or mouth bones
+          // Find jaw bone or mouth bones for lip sync
           if (child instanceof THREE.Bone) {
             const lowerName = child.name.toLowerCase();
             if (lowerName.includes('jaw') || 
@@ -94,15 +91,43 @@ export const useAvatarModel = (sceneObjects: ThreeSceneObjects | null) => {
           console.log('Found animations:', gltf.animations.length);
           mixerRef.current = new THREE.AnimationMixer(model);
           
-          // Play all animations
+          // Log all animations for debugging
           gltf.animations.forEach((animation, index) => {
             console.log(`Animation ${index}: ${animation.name}`);
-            if (mixerRef.current) {
-              const action = mixerRef.current.clipAction(animation);
-              action.play();
-            }
           });
+
+          // Find and play idle animation by default
+          const idleAnimation = gltf.animations.find(
+            anim => anim.name.toLowerCase().includes('idle') || 
+                   anim.name.toLowerCase().includes('breathing')
+          );
+          
+          if (idleAnimation && mixerRef.current) {
+            const action = mixerRef.current.clipAction(idleAnimation);
+            action.play();
+            console.log('Playing idle animation:', idleAnimation.name);
+          } else if (mixerRef.current) {
+            // If no idle animation is found, play the first animation
+            const action = mixerRef.current.clipAction(gltf.animations[0]);
+            action.play();
+            console.log('Playing default animation:', gltf.animations[0].name);
+          }
         }
+        
+        // Search for morph targets/blend shapes for lip sync
+        model.traverse((child) => {
+          if (child instanceof THREE.Mesh && child.morphTargetDictionary && child.morphTargetInfluences) {
+            console.log('Found morph targets:', child.morphTargetDictionary);
+            // Look for mouth/lip related morph targets
+            Object.keys(child.morphTargetDictionary).forEach(key => {
+              if (key.toLowerCase().includes('mouth') || 
+                  key.toLowerCase().includes('lip') || 
+                  key.toLowerCase().includes('jaw')) {
+                console.log('Found mouth morph target:', key);
+              }
+            });
+          }
+        });
         
         setModelLoaded(true);
       },
@@ -110,18 +135,37 @@ export const useAvatarModel = (sceneObjects: ThreeSceneObjects | null) => {
         console.log('Model loading:', (progress.loaded / progress.total * 100).toFixed(2) + '%');
       },
       (error) => {
-        console.error('Error loading model:', error);
-        // Try loading as FBX as fallback
-        tryLoadingAsBlend(scene, loadingManager);
+        console.error('Error loading GLB model:', error);
+        // Try loading the blend file as fallback
+        tryLoadingBlendFile(scene, loadingManager);
       }
     );
   };
   
-  const tryLoadingAsBlend = (scene: THREE.Scene, loadingManager: THREE.LoadingManager) => {
-    console.log('Trying to load as direct Blend file...');
-    // For blend files, we may need a Blender exporter or converter
-    // This is a placeholder as direct .blend loading is not supported in Three.js
-    console.error("Direct .blend loading not supported. Please export to glTF or FBX format.");
+  const tryLoadingBlendFile = (scene: THREE.Scene, loadingManager: THREE.LoadingManager) => {
+    console.log('Trying to load Sketchfab_2022_02_06_11_22_28.blend as fallback...');
+    // For blend files, try using GLTFLoader as a fallback
+    const gltfLoader = createGLTFLoader(loadingManager);
+    
+    gltfLoader.load(
+      '/Sketchfab_2022_02_06_11_22_28.blend',
+      (gltf) => {
+        console.log('Fallback model loaded successfully');
+        const model = gltf.scene;
+        modelRef.current = model;
+        
+        model.scale.set(0.5, 0.5, 0.5);
+        model.position.set(0, -1, 0);
+        model.rotation.y = 0;
+        
+        scene.add(model);
+        setModelLoaded(true);
+      },
+      undefined,
+      (error) => {
+        console.error('Error loading fallback model:', error);
+      }
+    );
   };
 
   return {

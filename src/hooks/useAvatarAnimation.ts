@@ -53,10 +53,36 @@ export const useAvatarAnimation = ({
       // Update lip sync with improved smoothing
       if (jawBoneRef.current && modelLoaded) {
         // Map mouth openness to jaw rotation with enhanced natural movement
-        const targetRotation = currentMouthOpenness.current * 0.5; // Increase range for better visibility
+        const targetRotation = currentMouthOpenness.current * 0.3; // Scaled for better visibility
         const currentRotation = jawBoneRef.current.rotation.x;
         // Apply smoothing for more natural transitions
         jawBoneRef.current.rotation.x += (targetRotation - currentRotation) * 0.3;
+      }
+      
+      // Check for morph targets for lip sync (alternative method)
+      if (modelRef.current && modelLoaded) {
+        modelRef.current.traverse((child) => {
+          if (child instanceof THREE.Mesh && 
+              child.morphTargetDictionary && 
+              child.morphTargetInfluences) {
+            
+            // Look for mouth morph targets
+            for (const key in child.morphTargetDictionary) {
+              if (key.toLowerCase().includes('mouth') || 
+                  key.toLowerCase().includes('lip') ||
+                  key.toLowerCase().includes('jaw')) {
+                
+                const index = child.morphTargetDictionary[key];
+                const targetValue = currentMouthOpenness.current;
+                const currentValue = child.morphTargetInfluences[index];
+                
+                // Apply smooth interpolation to lip movement
+                child.morphTargetInfluences[index] = 
+                  currentValue + (targetValue - currentValue) * 0.3;
+              }
+            }
+          }
+        });
       }
       
       // Update animation mixer with delta time for consistent speed
@@ -65,12 +91,14 @@ export const useAvatarAnimation = ({
         mixerRef.current.update(deltaTime);
       }
       
-      // Add natural head movements
-      if (modelRef.current) {
+      // Add subtle natural head movements when not speaking
+      if (modelRef.current && currentMouthOpenness.current < 0.1) {
         const time = now * 0.0003;
-        // Subtle movements for naturalistic feel
-        modelRef.current.rotation.y = Math.sin(time) * 0.04; 
-        modelRef.current.rotation.x = Math.sin(time * 1.3) * 0.02;
+        // Subtle idle movements for naturalistic feel
+        const subtleMovement = Math.sin(time) * 0.03;
+        // Apply subtle movement to the model's head
+        modelRef.current.rotation.y += (subtleMovement - modelRef.current.rotation.y) * 0.01;
+        modelRef.current.rotation.x += (Math.sin(time * 1.3) * 0.02 - modelRef.current.rotation.x) * 0.01;
       }
       
       // Render the scene

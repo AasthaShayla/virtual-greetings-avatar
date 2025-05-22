@@ -9,7 +9,7 @@ import type { ThreeSceneObjects } from '@/utils/threeUtils';
 import { Button } from '@/components/ui/button';
 
 const TalkingHead: React.FC = () => {
-  const { mouthOpenness, speak } = useSpeech();
+  const { mouthOpenness, speak, isSpeaking } = useSpeech();
   const canvasRef = useRef<HTMLDivElement>(null);
   const sceneObjectsRef = useRef<ThreeSceneObjects | null>(null);
   const currentMouthOpenness = useRef<number>(0);
@@ -83,14 +83,16 @@ const TalkingHead: React.FC = () => {
     
     if (modelLoaded) {
       setModelLoadError(null);
+      // Auto-test speaking when model is loaded
+      speak("Hello! My lips are now synced with my speech. How can I help you today?");
     }
     
     return () => clearTimeout(timeout);
-  }, [modelLoaded]);
+  }, [modelLoaded, speak]);
   
   // Try speaking test message
   const testSpeak = () => {
-    speak("Testing the virtual agent with the new 3D model.");
+    speak("Testing lip synchronization with the loaded 3D model. Can you see my mouth moving as I speak?");
   };
 
   return (
@@ -101,10 +103,22 @@ const TalkingHead: React.FC = () => {
         <div className="absolute top-0 left-0 right-0 bg-red-100 text-red-700 p-4 text-center">
           {modelLoadError}
           <div className="mt-2">
-            <Button onClick={testSpeak} variant="outline">Test Speech</Button>
+            <Button onClick={testSpeak} variant="outline">Test Speech & Lip Sync</Button>
           </div>
         </div>
       )}
+      
+      <div className="absolute bottom-4 right-4">
+        {modelLoaded && (
+          <Button 
+            onClick={testSpeak} 
+            disabled={isSpeaking}
+            className="bg-blue-500 hover:bg-blue-600"
+          >
+            {isSpeaking ? "Speaking..." : "Test Lip Sync"}
+          </Button>
+        )}
+      </div>
     </div>
   );
 };
