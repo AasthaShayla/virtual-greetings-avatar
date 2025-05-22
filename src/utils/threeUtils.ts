@@ -1,6 +1,7 @@
 
 import * as THREE from 'three';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { TGALoader } from 'three/examples/jsm/loaders/TGALoader.js';
 
 // Initialize the 3D scene with performance optimizations
@@ -59,38 +60,29 @@ export const loadTextures = () => {
     console.error('Error loading texture:', url);
   };
   
-  // Load head texture with TGALoader
-  const headColorTexture = tgaLoader.load('/Textures/f020_head_color.tga');
-  const headNormalTexture = tgaLoader.load('/Textures/f020_head_normal.tga');
-  const headSpecularTexture = tgaLoader.load('/Textures/f020_head_specular.tga');
-  
-  // Load body texture with TGALoader
-  const bodyColorTexture = tgaLoader.load('/Textures/f020_body_color.tga');
-  const bodyNormalTexture = tgaLoader.load('/Textures/f020_body_normal.tga');
-  const bodySpecularTexture = tgaLoader.load('/Textures/f020_body_specular.tga');
-
-  // Create optimized materials with proper textures
+  // Create optimized materials with default textures
   const headMaterial = new THREE.MeshPhongMaterial({
-    map: headColorTexture,
-    normalMap: headNormalTexture,
-    specularMap: headSpecularTexture,
+    color: 0xffdbac, // Default skin tone if textures not available
     shininess: 30,
   });
   
   const bodyMaterial = new THREE.MeshPhongMaterial({
-    map: bodyColorTexture,
-    normalMap: bodyNormalTexture,
-    specularMap: bodySpecularTexture,
+    color: 0xadd8e6, // Default clothing color if textures not available
     shininess: 20,
   });
 
-  console.log('Textures loaded successfully');
+  console.log('Default materials created');
   return { headMaterial, bodyMaterial };
 };
 
 // Create an FBXLoader instance with optional loading manager
 export const createFBXLoader = (loadingManager?: THREE.LoadingManager) => {
   return loadingManager ? new FBXLoader(loadingManager) : new FBXLoader();
+};
+
+// Create a GLTFLoader instance with optional loading manager
+export const createGLTFLoader = (loadingManager?: THREE.LoadingManager) => {
+  return loadingManager ? new GLTFLoader(loadingManager) : new GLTFLoader();
 };
 
 export type ThreeSceneObjects = {
