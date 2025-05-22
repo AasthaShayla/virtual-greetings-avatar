@@ -4,12 +4,14 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { loadTextures, createGLTFLoader } from '@/utils/threeUtils';
 import type { ThreeSceneObjects } from '@/utils/threeUtils';
+import { toast } from '@/hooks/use-toast';
 
 export const useAvatarModel = (sceneObjects: ThreeSceneObjects | null) => {
   const modelRef = useRef<THREE.Group | null>(null);
   const mixerRef = useRef<THREE.AnimationMixer | null>(null);
   const jawBoneRef = useRef<THREE.Bone | null>(null);
   const [modelLoaded, setModelLoaded] = useState(false);
+  const [loadAttempts, setLoadAttempts] = useState(0);
   
   useEffect(() => {
     if (!sceneObjects) return;
@@ -19,6 +21,9 @@ export const useAvatarModel = (sceneObjects: ThreeSceneObjects | null) => {
     loadingManager.onProgress = (url, loaded, total) => {
       console.log(`Loading model: ${Math.round(loaded / total * 100)}% (${url})`);
     };
+    
+    // Log the loading attempt
+    console.log(`Attempting to load model (attempt ${loadAttempts + 1})`);
     
     // Load model with optimized settings
     loadModel(sceneObjects, loadingManager);
@@ -35,7 +40,7 @@ export const useAvatarModel = (sceneObjects: ThreeSceneObjects | null) => {
         mixerRef.current.stopAllAction();
       }
     };
-  }, [sceneObjects]);
+  }, [sceneObjects, loadAttempts]);
   
   const loadModel = (sceneObjects: ThreeSceneObjects, loadingManager: THREE.LoadingManager) => {
     console.log('Loading 3D model (GLB)...');
@@ -43,9 +48,15 @@ export const useAvatarModel = (sceneObjects: ThreeSceneObjects | null) => {
     const gltfLoader = createGLTFLoader(loadingManager);
     const { headMaterial, bodyMaterial } = loadTextures();
     
+    // Check if the file exists before loading
+    const modelPath = '/office_worker_1_animated.glb';
+    
+    // Log the full path being attempted
+    console.log('Attempting to load model from path:', window.location.origin + modelPath);
+    
     // Load the GLB model
     gltfLoader.load(
-      '/office_worker_1_animated.glb',
+      modelPath,
       (gltf) => {
         console.log('Model loaded successfully', gltf);
         const model = gltf.scene;
@@ -129,14 +140,21 @@ export const useAvatarModel = (sceneObjects: ThreeSceneObjects | null) => {
           }
         });
         
+        toast({
+          title: "Model loaded successfully",
+          description: "3D character is ready for interaction",
+        });
         setModelLoaded(true);
       },
       (progress) => {
-        console.log('Model loading:', (progress.loaded / progress.total * 100).toFixed(2) + '%');
+        const percent = (progress.loaded / progress.total * 100).toFixed(2);
+        console.log('Model loading:', percent + '%');
       },
       (error) => {
         console.error('Error loading GLB model:', error);
-        // Try loading the blend file as fallback
+        
+        // Try to load the Blend file as fallback
+        console.log('Trying fallback model...');
         tryLoadingBlendFile(scene, loadingManager);
       }
     );
@@ -159,11 +177,28 @@ export const useAvatarModel = (sceneObjects: ThreeSceneObjects | null) => {
         model.rotation.y = 0;
         
         scene.add(model);
+        toast({
+          title: "Fallback model loaded",
+          description: "Using alternative 3D model",
+        });
         setModelLoaded(true);
       },
       undefined,
       (error) => {
         console.error('Error loading fallback model:', error);
+        toast({
+          variant: "destructive",
+          title: "Model loading failed",
+          description: "Could not load 3D model. Please check file paths and formats.",
+        });
+        
+        // Increment load attempts to trigger a retry
+        if (loadAttempts < 2) {
+          console.log('Will retry loading in 3 seconds...');
+          setTimeout(() => {
+            setLoadAttempts(loadAttempts + 1);
+          }, 3000);
+        }
       }
     );
   };
