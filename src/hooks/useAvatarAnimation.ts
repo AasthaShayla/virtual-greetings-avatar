@@ -22,20 +22,17 @@ export const useAvatarAnimation = ({
 }: AnimationProps) => {
   const clockRef = useRef<THREE.Clock>(new THREE.Clock());
   const animationFrameId = useRef<number>(0);
+  const lastFrameTime = useRef<number>(0);
+  const TARGET_FPS = 60;
+  const FRAME_TIME = 1000 / TARGET_FPS;
   
   useEffect(() => {
-    if (!sceneObjects) return;
+    if (!sceneObjects || !modelLoaded) return;
     
-    // Add stronger lighting to make sure the model is visible
-    const frontLight = new THREE.DirectionalLight(0xffffff, 1.5);
-    frontLight.position.set(0, 0, 2);
-    sceneObjects.scene.add(frontLight);
+    // Reset clock to ensure smooth animation
+    clockRef.current.start();
     
-    const fillLight = new THREE.DirectionalLight(0xffffff, 1);
-    fillLight.position.set(-1, 0.5, 0.5);
-    sceneObjects.scene.add(fillLight);
-    
-    // Start the animation loop
+    // Start the animation loop with frame rate limiting
     animate();
     
     return () => {
@@ -46,37 +43,43 @@ export const useAvatarAnimation = ({
   }, [sceneObjects, modelLoaded]);
   
   const animate = () => {
-    // Update mouth animation based on speech for lip sync
-    if (jawBoneRef.current && modelLoaded) {
-      // Enhanced lip sync - map the mouth openness to jaw rotation with more natural movement
-      const targetRotation = currentMouthOpenness.current * 0.4; // Increase jaw movement range
-      const currentRotation = jawBoneRef.current.rotation.x;
-      // Smooth transition for more natural movement
-      jawBoneRef.current.rotation.x += (targetRotation - currentRotation) * 0.3;
+    const now = performance.now();
+    const elapsed = now - lastFrameTime.current;
+    
+    // Limit frame rate for performance but ensure smooth animation
+    if (elapsed > FRAME_TIME) {
+      lastFrameTime.current = now - (elapsed % FRAME_TIME);
+      
+      // Update lip sync with improved smoothing
+      if (jawBoneRef.current && modelLoaded) {
+        // Map mouth openness to jaw rotation with enhanced natural movement
+        const targetRotation = currentMouthOpenness.current * 0.5; // Increase range for better visibility
+        const currentRotation = jawBoneRef.current.rotation.x;
+        // Apply smoothing for more natural transitions
+        jawBoneRef.current.rotation.x += (targetRotation - currentRotation) * 0.3;
+      }
+      
+      // Update animation mixer with delta time for consistent speed
+      const deltaTime = clockRef.current.getDelta();
+      if (mixerRef.current) {
+        mixerRef.current.update(deltaTime);
+      }
+      
+      // Add natural head movements
+      if (modelRef.current) {
+        const time = now * 0.0003;
+        // Subtle movements for naturalistic feel
+        modelRef.current.rotation.y = Math.sin(time) * 0.04; 
+        modelRef.current.rotation.x = Math.sin(time * 1.3) * 0.02;
+      }
+      
+      // Render the scene
+      if (sceneObjects) {
+        sceneObjects.renderer.render(sceneObjects.scene, sceneObjects.camera);
+      }
     }
     
-    // Update animation mixer
-    const deltaTime = clockRef.current.getDelta();
-    if (mixerRef.current) {
-      mixerRef.current.update(deltaTime);
-    }
-    
-    // Make head move slightly for more natural look with enhanced facial expressions
-    if (modelRef.current) {
-      const time = Date.now() * 0.0005;
-      // Face the model toward the camera (already set in model loading)
-      // Add subtle natural movements
-      modelRef.current.rotation.y = Math.sin(time) * 0.05; 
-      modelRef.current.rotation.x = Math.sin(time * 1.3) * 0.03;
-    }
-    
-    // Render the scene
-    if (sceneObjects) {
-      const { scene, camera, renderer } = sceneObjects;
-      renderer.render(scene, camera);
-    }
-    
-    // Continue animation loop with optimized frame rate
+    // Continue animation loop
     animationFrameId.current = requestAnimationFrame(animate);
   };
 };

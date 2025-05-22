@@ -17,41 +17,49 @@ export const SpeechProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const speak = useCallback((text: string) => {
     if ('speechSynthesis' in window) {
       // Cancel any ongoing speech
-      speechSynthesis.cancel();
+      window.speechSynthesis.cancel();
       
       const utterance = new SpeechSynthesisUtterance(text);
       
-      // Set a female voice specifically
-      const voices = speechSynthesis.getVoices();
-      console.log("Available voices:", voices.map(v => `${v.name} (${v.lang})`));
+      // Pre-load voices to ensure availability
+      let voices = speechSynthesis.getVoices();
       
-      // Try to find a female English voice
-      const femaleVoice = voices.find(voice => 
-        voice.lang.includes('en') && 
-        (voice.name.includes('female') || 
-         voice.name.includes('woman') || 
-         voice.name.includes('girl') ||
-         (!voice.name.includes('male') && !voice.name.includes('man')))
-      );
-      
-      if (femaleVoice) {
-        console.log("Using female voice:", femaleVoice.name);
-        utterance.voice = femaleVoice;
-      } else {
-        // Fallback to any English voice
-        const englishVoice = voices.find(voice => voice.lang.includes('en'));
-        if (englishVoice) {
-          console.log("Using fallback voice:", englishVoice.name);
-          utterance.voice = englishVoice;
+      const voiceSetup = () => {
+        voices = speechSynthesis.getVoices();
+        console.log("Available voices:", voices.map(v => `${v.name} (${v.lang})`));
+        
+        // Prioritize female English voices
+        const femaleVoice = voices.find(voice => 
+          voice.lang.includes('en') && 
+          (voice.name.toLowerCase().includes('female') || 
+           voice.name.toLowerCase().includes('woman') ||
+           voice.name.toLowerCase().includes('girl') ||
+           (!voice.name.toLowerCase().includes('male') && !voice.name.toLowerCase().includes('man')))
+        );
+        
+        if (femaleVoice) {
+          console.log("Using female voice:", femaleVoice.name);
+          utterance.voice = femaleVoice;
+        } else {
+          // Fallback to any English voice
+          const englishVoice = voices.find(voice => voice.lang.includes('en'));
+          if (englishVoice) {
+            console.log("Using fallback voice:", englishVoice.name);
+            utterance.voice = englishVoice;
+          }
         }
-      }
-      
-      // Set speech parameters for more natural female speech
-      utterance.pitch = 1.2;  // Slightly higher pitch for female voice
-      utterance.rate = 1.0;   // Normal speed
+        
+        // Set voice parameters for female characteristics
+        utterance.pitch = 1.2;  // Higher pitch for female voice
+        utterance.rate = 1.0;   // Normal speed
+        
+        // Start speaking
+        window.speechSynthesis.speak(utterance);
+      };
       
       // Event handlers
       utterance.onstart = () => {
+        console.log("Speech started");
         setIsSpeaking(true);
         
         // Clear any existing interval
@@ -59,41 +67,44 @@ export const SpeechProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           clearInterval(speechIntervalRef.current);
         }
         
-        // Enhanced mouth movement based on speech rhythm
+        // Enhanced lip sync with dynamic mouth movement
         speechIntervalRef.current = window.setInterval(() => {
-          // Use a more natural mouth movement pattern
-          // This creates a wave-like pattern that better mimics speech
+          // Complex mouth movement pattern for realistic speech
           const now = Date.now();
-          const base = Math.sin(now * 0.01) * 0.3 + 0.5; // Base movement
-          const detail = Math.sin(now * 0.05) * 0.2;     // Detailed movement
-          const volume = Math.max(0, Math.min(0.9, base + detail)); // Clamp between 0-0.9
+          // Multiple overlapping waves for natural movement
+          const base = Math.sin(now * 0.01) * 0.3 + 0.5;  // Base movement
+          const detail = Math.sin(now * 0.05) * 0.2;      // Detailed movement
+          const microDetail = Math.sin(now * 0.2) * 0.1;  // Micro-expressions
+          const volume = Math.max(0, Math.min(1, base + detail + microDetail)); // Clamp between 0-1
           
           setMouthOpenness(volume);
-        }, 50); // More frequent updates for smoother animation
+        }, 30); // Higher frequency updates for smoother animation
       };
       
       utterance.onend = () => {
+        console.log("Speech ended");
         if (speechIntervalRef.current !== null) {
           clearInterval(speechIntervalRef.current);
           speechIntervalRef.current = null;
         }
         setIsSpeaking(false);
         
-        // Gradually close mouth for natural look
+        // Gradual mouth closing animation
         const closeMouth = () => {
           setMouthOpenness(prev => {
-            const newValue = prev * 0.8;
+            const newValue = prev * 0.75; // Faster closing
             if (newValue < 0.01) {
               return 0;
             }
-            setTimeout(closeMouth, 50);
+            requestAnimationFrame(closeMouth);
             return newValue;
           });
         };
         closeMouth();
       };
       
-      utterance.onerror = () => {
+      utterance.onerror = (event) => {
+        console.error("Speech error:", event);
         if (speechIntervalRef.current !== null) {
           clearInterval(speechIntervalRef.current);
           speechIntervalRef.current = null;
@@ -102,17 +113,27 @@ export const SpeechProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         setMouthOpenness(0);
       };
       
-      // Pre-load voices if needed
-      if (speechSynthesis.getVoices().length === 0) {
+      // Check if voices are loaded
+      if (voices.length === 0) {
         speechSynthesis.addEventListener('voiceschanged', () => {
-          // Try again once voices are loaded
-          speak(text);
+          voiceSetup();
         }, { once: true });
-        return;
+        
+        // Safety timeout to force voice loading
+        setTimeout(() => {
+          if (voices.length === 0) {
+            voices = speechSynthesis.getVoices();
+            if (voices.length > 0) {
+              voiceSetup();
+            } else {
+              // Last resort - speak without a specific voice
+              window.speechSynthesis.speak(utterance);
+            }
+          }
+        }, 500);
+      } else {
+        voiceSetup();
       }
-      
-      // Speak
-      speechSynthesis.speak(utterance);
     } else {
       console.error("Speech synthesis not supported in this browser");
     }
